@@ -1,8 +1,9 @@
 cmake_minimum_required(VERSION 3.14)
-project(MongoCaching LANGUAGE CXX)
+project(MongoCaching LANGUAGES CXX)
 
-set_property(TARGET MongoCaching CMAKE_CXX_STANDARD 20)
-set_property(TARGET MongoCaching CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # Copy compile_commands.json to root for lsp
 add_custom_target(copy_compile_commands ALL
@@ -13,8 +14,8 @@ add_custom_target(copy_compile_commands ALL
 )
 
 # Find required packages
-find_package(libmongocxx REQUIRED)
-find_package(libbsoncxx REQUIRED)
+find_package(mongocxx REQUIRED)
+find_package(bsoncxx REQUIRED)
 
 # Create header-only library
 add_library(MongoCaching INTERFACE)
@@ -31,11 +32,11 @@ target_compile_definitions(MongoCaching INTERFACE MY_LIB_NAMESPACE=hjw)
 
 # link external dependencies
 target_link_libraries(MongoCaching
-    PRIVATE
-    libmongocxx::mongocxx
-    libbsoncxx::bsoncxx
+    INTERFACE
+    mongocxx
+    bsoncxx
 )
 
 # add temporary executable
 add_executable(temp src/main.cpp)
-target_link_libraries(temp PRIVATE lib)
+target_link_libraries(temp PRIVATE MongoCaching)
