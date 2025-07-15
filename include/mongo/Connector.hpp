@@ -4,6 +4,7 @@
 #include <iostream>
 #include <mongocxx/uri.hpp>
 #include <mongocxx/client.hpp>
+#include <mongocxx/instance.hpp>
 
 namespace hjw {
 
@@ -13,20 +14,22 @@ namespace hjw {
 
             public:
 
-                Connector(const std::string& cluster) {
+                Connector(const std::string& cluster) : inst{} {
                     setConnectionString(cluster);
+                    connect();
                 };
 
-                void setConnectionString(const std::string& cluster);
-
-                void connect();
+                mongocxx::database getDB(const std::string& db) const;
 
             private:
 
+                void setConnectionString(const std::string& cluster);
+                void connect();
+
                 std::string connection_string;
-                std::unique_ptr<mongocxx::uri> uri;
+                mongocxx::instance inst;
+                mongocxx::uri uri;
                 std::unique_ptr<mongocxx::client> client;
-            
         };
     }
 }

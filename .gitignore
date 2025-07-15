@@ -4,4 +4,4 @@
 tmp/
 
 build/
-include/mongo/connectionStrings.txt
+src/mongo/connectionStrings.txt

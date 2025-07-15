@@ -18,7 +18,7 @@ void Connector::setConnectionString(const std::string& cluster) {
         std::string c;
         while(getline(txt, l)) {
             c = l.substr(0, l.find(':'));
-            uri = l.substr(l.find(':'), l.length());
+            uri = l.substr(l.find(':') + 1, l.length());
             if (clusterStrings.find(c) != clusterStrings.end()) {
                 std::cout << "Connector::setConnectionString [WARNING] Duplicate found" << std::endl;
             }else {
@@ -40,8 +40,8 @@ void Connector::setConnectionString(const std::string& cluster) {
 // Attempt to connect to the mongoDB cluster
 void Connector::connect() {
     try {
-        uri = std::make_unique<mongocxx::uri>(connection_string);
-        client = std::make_unique<mongocxx::client>(*uri);
+        uri = mongocxx::uri(connection_string);
+        client = std::make_unique<mongocxx::client>(uri);
 
         auto admin = (*client)["admin"];
 
@@ -51,5 +51,8 @@ void Connector::connect() {
     } catch (const mongocxx::exception &e) {
         std::cout << "An exception occurred: " << e.what() << std::endl;
     }
+}
 
+mongocxx::database Connector::getDB(const std::string& db) const {
+    return (*client)[db];
 }
