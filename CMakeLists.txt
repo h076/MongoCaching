@@ -17,24 +17,38 @@ add_custom_target(copy_compile_commands ALL
 find_package(mongocxx REQUIRED)
 find_package(bsoncxx REQUIRED)
 
-# Create header-only library
-add_library(MongoCaching INTERFACE)
+### Define library
 
-# Include all headers
+# All mongo source files
+file(GLOB MONGO_SRC CONFIGURE_DEPENDS
+  src/mongo/*.cpp
+)
+
+add_library(MongoCaching STATIC ${MONGO_SRC})
+
+# Include headers
 target_include_directories(MongoCaching
-  INTERFACE
-  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-  $<INSTALL_INTERFACE:include>
+  PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+    $<INSTALL_INTERFACE:include>
+    ${MONGOCXX_INCLUDE_DIR}
+    ${BSONCXX_INCLUDE_DIR}
+    /usr/local/include/mongocxx/v_noabi
+    /usr/local/include/bsoncxx/v_noabi
+    /usr/local/include/libmongoc-1.0
+    /usr/local/include/libbson-1.0
 )
 
 # define name space
 target_compile_definitions(MongoCaching INTERFACE MY_LIB_NAMESPACE=hjw)
 
+
+
 # link external dependencies
 target_link_libraries(MongoCaching
     INTERFACE
-    mongocxx
-    bsoncxx
+      mongocxx
+      bsoncxx
 )
 
 # add temporary executable
