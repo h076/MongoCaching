@@ -25,6 +25,15 @@ endif()
 find_package(mongocxx REQUIRED)
 find_package(bsoncxx REQUIRED)
 
+# RapidJSON
+find_path(RAPIDJSON_INCLUDE_DIR rapidjson/document.h
+  PATHS /usr/include /usr/local/include
+)
+
+if (NOT RAPIDJSON_INCLUDE_DIR)
+  message(FATAL_ERROR "RapidJSON headers not found!")
+endif()
+
 ### Define library
 
 # All mongo source files
@@ -46,6 +55,7 @@ target_include_directories(MongoCaching
     /usr/local/include/libmongoc-1.0
     /usr/local/include/libbson-1.0
     ${Boost_INCLUDE_DIR}
+    ${RAPIDJSON_INCLUDE_DIR}
 )
 
 # define name space
