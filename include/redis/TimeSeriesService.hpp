@@ -18,6 +18,10 @@ namespace hjw {
 
                 TimeSeriesService(std::shared_ptr<boost::redis::connection> conn) : m_conn(std::move(conn)) {}
 
+                net::awaitable<void> co_create(const std::string& symbol);
+
+                net::awaitable<bool> co_exists(const std::string& symbol);
+
                 // Add a whole chunk of spots
                 void addSeries(utils::series * s);
 
@@ -29,7 +33,7 @@ namespace hjw {
                 utils::series * getSeries(const std::string& symbol);
 
                 // Get a range of spot values
-                void get(const std::string& tsName, const std::string& from, const std::string& to);
+                net::awaitable<utils::series *> co_get(const std::string& tsName, const std::string& from, const std::string& to);
 
             private:
 
