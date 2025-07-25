@@ -13,9 +13,26 @@ add_custom_target(copy_compile_commands ALL
   COMMENT "Copying compile_commands.json to root directory"
 )
 
+find_package(Boost 1.85.0 COMPONENTS program_options REQUIRED)
+
+# Required for Boost::Redis
+find_package(OpenSSL REQUIRED)
+if (OPENSSL_FOUND)
+    include_directories(${OPENSSL_INCLUDE_DIR})
+endif()
+
 # Find required packages
 find_package(mongocxx REQUIRED)
 find_package(bsoncxx REQUIRED)
+
+# RapidJSON
+find_path(RAPIDJSON_INCLUDE_DIR rapidjson/document.h
+  PATHS /usr/include /usr/local/include
+)
+
+if (NOT RAPIDJSON_INCLUDE_DIR)
+  message(FATAL_ERROR "RapidJSON headers not found!")
+endif()
 
 ### Define library
 
@@ -37,6 +54,8 @@ target_include_directories(MongoCaching
     /usr/local/include/bsoncxx/v_noabi
     /usr/local/include/libmongoc-1.0
     /usr/local/include/libbson-1.0
+    ${Boost_INCLUDE_DIR}
+    ${RAPIDJSON_INCLUDE_DIR}
 )
 
 # define name space

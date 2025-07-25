@@ -2,6 +2,7 @@
 #define SERVICE_H_
 
 #include "Connector.hpp"
+#include <utils/spots.hpp>
 
 #include <mongocxx/database.hpp>
 #include <mongocxx/collection.hpp>
@@ -25,7 +26,7 @@ namespace hjw {
 
                 void set(const std::string& db, const std::string& coll);
 
-                virtual void get(const std::string& symbol, const std::string& from, const std::string& to) = 0;
+                virtual utils::series * get(const std::string& symbol, const std::string& from, const std::string& to) = 0;
 
                 virtual void post() = 0;
 

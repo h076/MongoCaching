@@ -14,7 +14,7 @@ namespace hjw {
                 SpotService(std::shared_ptr<Connector> conn)
                     : Service(conn) {};
 
-                void get(const std::string& symbol, const std::string& from, const std::string& to) override;
+                utils::series * get(const std::string& symbol, const std::string& from, const std::string& to) override;
 
                 void post() override;
         };
