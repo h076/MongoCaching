@@ -1,5 +1,5 @@
-#ifndef SERVICE_H_
-#define SERVICE_H_
+#ifndef TIMESERIESSERVICE_H_
+#define TIMESERIESSERVICE_H_
 
 #include <boost/redis.hpp>
 #include <boost/asio.hpp>
@@ -37,8 +37,7 @@ namespace hjw {
                                                              const std::string& to);
 
                 // Get a range of spot values
-                net::awaitable<std::vector<std::tuple<std::string, std::string>>>
-                co_get(const std::string& tsName, const std::string& from, const std::string& to);
+                net::awaitable<utils::subseries *> co_get(const std::string& tsName, const std::string& from, const std::string& to);
 
             private:
                 inline void fill_val(std::vector<std::string> * bucket,
@@ -72,4 +71,4 @@ namespace hjw {
     }
 }
 
-#endif // SERVICE_H_
+#endif // TIMESERIESSERVICE_H_

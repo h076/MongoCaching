@@ -10,7 +10,7 @@ using namespace hjw::mongo;
 
 // using cluster name as index for txt file containing collection strings
 void Connector::setConnectionString(const std::string& cluster) {
-    std::ifstream txt("connectionStrings.txt");
+    std::ifstream txt("/Users/harry/Documents/cpp/MongoCaching/src/mongo/src/connectionStrings.txt");
     std::unordered_map<std::string, std::string> clusterStrings;
     if (txt.is_open()) {
         std::string l;

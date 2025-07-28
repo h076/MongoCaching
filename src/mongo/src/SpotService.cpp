@@ -41,6 +41,8 @@ series * SpotService::get(const std::string& symbol, const std::string& from, co
         // Load data into series
         appendToSeries(*s, jd);
     }
+
+    return s;
 }
 
 void SpotService::post() {

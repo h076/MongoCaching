@@ -2,8 +2,13 @@
 #define CONNECTIONPOOL_H_
 
 #include <boost/asio.hpp>
-#include <boost/redis.hpp>
+#include <boost/asio/consign.hpp>
+#include <boost/asio/detached.hpp>
+
+#include <boost/redis/src.hpp>
 #include <boost/asio/experimental/channel.hpp>
+#include <boost/redis/connection.hpp>
+#include <boost/redis/config.hpp>
 
 #include <iostream>
 #include <deque>
@@ -16,6 +21,7 @@ namespace hjw {
 
         namespace net = boost::asio;
         using tcp = net::ip::tcp;
+        using boost::redis::connection;
 
         // Manages a pool of asynchronous redis connections
         // Allows multiple consumers to acuqire and release in a async structure
@@ -68,15 +74,24 @@ namespace hjw {
                     // Spawn a coroutine on the executor using co_spawn
                     net::co_spawn(m_executor,
                                   [this, &resolver, host, port]() -> net::awaitable<void> {
-                                      tcp::socket socket(m_executor);
+                                      //tcp::socket socket(m_executor);
                                       // Resolve endpoints
-                                      auto endpoints = co_await resolver.async_resolve(host, port, net::use_awaitable);
+                                      //auto endpoints = co_await resolver.async_resolve(host, port, net::use_awaitable);
 
                                       // Asynchronously connect to redis
-                                      co_await net::async_connect(socket, endpoints, net::use_awaitable);
+                                      //co_await net::async_connect(socket, endpoints, net::use_awaitable);
 
                                       // Create connection using the socket
-                                      auto conn = std::make_shared<boost::redis::connection>(std::move(socket));
+                                      //auto conn = std::make_shared<boost::redis::connection>(socket);
+                                      //
+                                      // Use executor to create connection
+                                      auto conn = std::make_shared<connection>(m_executor);
+
+                                      // Run connection within config
+                                      boost::redis::config cfg;
+                                      //cfg.addr.host = host;
+                                      //cfg.addr.port = port;
+                                      conn->async_run(cfg, {}, net::consign(net::detached, conn));
 
                                       // Store the connection using dispatch for thread-safety
                                       // This ensures we are on the thread of the executor
@@ -89,6 +104,8 @@ namespace hjw {
                                               m_connections.push_back(std::move(conn));
                                           }
                                       });
+
+                                      co_return;
                                   },  net::detached);
                 }
 
@@ -103,10 +120,15 @@ namespace hjw {
                                 self.complete(std::move(conn));
                             } else {
                                 // Save the handler to be resumed later
-                                pool.m_waiters.push_back(
-                                    [h = std::move(self)](std::shared_ptr<boost::redis::connection> conn) mutable {
-                                        h.complete(std::move(conn));
-                                    });
+                                using HandlerType = std::remove_reference_t<decltype(self)>;
+                                auto handler = std::make_shared<HandlerType>(std::move(self));
+                                pool.m_waiters.push_back([handler](std::shared_ptr<boost::redis::connection> conn) mutable {
+                                    (*handler).complete(std::move(conn));
+                                });
+                                //pool.m_waiters.push_back(
+                                    //[h = std::move(self)](std::shared_ptr<boost::redis::connection> conn) mutable {
+                                        //h.complete(std::move(conn));
+                                    //});
                             }
                         },
                         token,

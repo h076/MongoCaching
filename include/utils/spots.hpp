@@ -27,12 +27,17 @@ namespace hjw {
             series(const std::string& s) : symbol(s) {}
         };
 
+        // simple wrapper to use net::awaitable
+        struct subseries {
+            std::vector<std::tuple<std::string, std::string>> ss;
+        };
+
         inline void appendToSeries(series& s, rapidjson::Document& doc) {
-            s.timestamps.push_back(doc["timestamp"]["$date"].GetString());
-            s.low.push_back(doc["low"].GetString());
-            s.high.push_back(doc["high"].GetString());
-            s.close.push_back(doc["close"].GetString());
-            s.open.push_back(doc["open"].GetString());
+            s.timestamps.push_back(std::to_string(doc["timestamp"]["$date"].GetInt64()));
+            s.low.push_back(std::to_string(doc["low"].GetDouble()));
+            s.high.push_back(std::to_string(doc["high"].GetDouble()));
+            s.close.push_back(std::to_string(doc["close"].GetDouble()));
+            s.open.push_back(std::to_string(doc["open"].GetDouble()));
         }
 
     }

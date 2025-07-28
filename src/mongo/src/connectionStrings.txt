@@ -1,0 +1,1 @@
+statsCluster:mongodb+srv://cppUser:SKzvLfZrH49x5KK6@statscluster.mf4ds2j.mongodb.net/?retryWrites=true&w=majority&appName=statsCluster
