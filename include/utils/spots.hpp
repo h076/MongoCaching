@@ -27,10 +27,8 @@ namespace hjw {
             series(const std::string& s) : symbol(s) {}
         };
 
-        // simple wrapper to use net::awaitable
-        struct subseries {
-            std::vector<std::tuple<std::string, std::string>> ss;
-        };
+        // simple type to use net::awaitable
+        typedef std::vector<std::tuple<std::string, std::string>> subseries;
 
         inline void appendToSeries(series& s, rapidjson::Document& doc) {
             s.timestamps.push_back(std::to_string(doc["timestamp"]["$date"].GetInt64()));

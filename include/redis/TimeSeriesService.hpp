@@ -33,15 +33,16 @@ namespace hjw {
                                             const std::vector<std::string>& values);
 
                 // Get a whole chunk of spots
-                net::awaitable<utils::series *> co_getSeries(const std::string& symbol, const std::string& from,
-                                                             const std::string& to);
+                net::awaitable<utils::series *> co_getSeries(const std::string& symbol, const uint64_t from,
+                                                             const uint64_t to);
 
                 // Get a range of spot values
-                net::awaitable<utils::subseries *> co_get(const std::string& tsName, const std::string& from, const std::string& to);
+                net::awaitable<utils::subseries *> co_get(const std::string& tsName, const uint64_t from,
+                                                          const uint64_t to);
 
             private:
                 inline void fill_val(std::vector<std::string> * bucket,
-                                     std::vector<std::tuple<std::string, std::string>>& tap) {
+                                     utils::subseries& tap) {
                     bucket->clear();
                     bucket->reserve(tap.size());
 
@@ -53,7 +54,7 @@ namespace hjw {
                 }
 
                 inline void fill_key(std::vector<std::string> * bucket,
-                                     std::vector<std::tuple<std::string, std::string>>& tap) {
+                                     utils::subseries& tap) {
                     bucket->clear();
                     bucket->reserve(tap.size());
 
