@@ -30,8 +30,13 @@ namespace hjw {
 
             public:
 
-                TimeSeriesCache() : m_ioc(), m_ctxGuard(net::make_work_guard(m_ioc)),
-                                    m_running(false), m_redisPool(nullptr) {}
+                TimeSeriesCache(const std::string& sourceCluster)
+                    : m_ioc(), m_ctxGuard(net::make_work_guard(m_ioc)), m_running(false),
+                      m_redisPool(nullptr), m_mongoConn(sourceCluster),
+                      m_mongoSpotService(std::make_shared<mongo::Connector>(std::move(m_mongoConn)))
+                {
+                    m_mongoSpotService.set("StockData", "Spots");
+                }
 
                 ~TimeSeriesCache();
 
@@ -67,7 +72,18 @@ namespace hjw {
 
                 net::awaitable<void> requestHandler();
 
-                net::awaitable<void> handleGet();
+                net::awaitable<void> handleGet(TimeSeriesRequest& req);
+
+            private:
+
+                // Handle mongo connection with one connector
+                mongo::Connector m_mongoConn;
+
+                // Service to obtain historical data
+                // This service should be made thread safe using
+                mongo::SpotService m_mongoSpotService;
+                std::mutex m_spotServiceMutex;
+
         };
     }
 }

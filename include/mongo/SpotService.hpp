@@ -16,6 +16,11 @@ namespace hjw {
 
                 utils::series * get(const std::string& symbol, const std::string& from, const std::string& to) override;
 
+                utils::series * get(const std::string& symbol, const uint64_t from, const uint64_t to) override;
+
+                utils::series * get(const std::string& symbol, const std::chrono::system_clock::time_point from,
+                                    const std::chrono::system_clock::time_point to) override;
+
                 void post() override;
         };
     }

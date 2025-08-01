@@ -1,7 +1,9 @@
 #ifndef REQUESTS_H_
 #define REQUESTS_H_
 
+#include "utils/spots.hpp"
 #include <iostream>
+#include <future>
 
 namespace hjw {
 
@@ -14,6 +16,7 @@ namespace hjw {
             std::string symbol;
             uint64_t from;
             uint64_t to;
+            std::promise<utils::series *> getSeries;
         };
     }
 }
