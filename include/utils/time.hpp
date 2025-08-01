@@ -15,6 +15,12 @@ namespace hjw {
             std::time_t time = timegm(&tm); // convert to UTC
             return std::chrono::system_clock::from_time_t(time);
         }
+
+        inline uint64_t ISO8601ToUint64_t(const std::string& s) {
+            return static_cast<uint64_t>(
+                duration_cast<std::chrono::milliseconds>(
+                    parseISO8601(s).time_since_epoch()).count());
+        }
     }
 }
 

@@ -28,6 +28,11 @@ namespace hjw {
 
                 virtual utils::series * get(const std::string& symbol, const std::string& from, const std::string& to) = 0;
 
+                virtual utils::series * get(const std::string& symbol, const uint64_t from, const uint64_t to) = 0;
+
+                virtual utils::series * get(const std::string& symbol, const std::chrono::system_clock::time_point from,
+                                            const std::chrono::system_clock::time_point to) = 0;
+
                 virtual void post() = 0;
 
             private:

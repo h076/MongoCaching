@@ -1,4 +1,8 @@
+#include <boost/redis/response.hpp>
+#include <openssl/x509.h>
 #include <redis/TimeSeriesService.hpp>
+
+#include <iostream>
 
 using namespace hjw::utils;
 using namespace hjw::redis;
@@ -12,7 +16,9 @@ auto TimeSeriesService::co_create(const std::string& symbol) -> net::awaitable<v
     req.push("TS.CREATE", symbol+":close", "DUPLICATE_POLICY", "FIRST", "LABELS", "value_type", "close");
     req.push("TS.CREATE", symbol+":open", "DUPLICATE_POLICY", "FIRST", "LABELS", "value_type", "open");
 
-    response<ignore_t> resp;
+    generic_response resp;
+
+    std::cout << "co_create : Creating " << symbol << std::endl;
 
     co_await m_conn->async_exec(req, resp, net::deferred);
 
@@ -25,11 +31,13 @@ auto TimeSeriesService::co_exists(const std::string& symbol) -> net::awaitable<b
     // Use close series as a check
     req.push("TYPE", symbol+":close");
 
-    response<std::string> resp;
+    generic_response resp;
 
     co_await m_conn->async_exec(req, resp, net::deferred);
 
-    if (std::get<0>(resp) == "timeseries")
+    std::cout << "resp : " << resp.value().at(0).value << std::endl;
+
+    if (resp.value().at(0).value == "TSDB-TYPE")
         co_return true;
     else
         co_return false;
@@ -42,6 +50,8 @@ auto TimeSeriesService::co_addSeries(series * s) -> net::awaitable<void> {
     bool exists = co_await co_exists(symbol);
     if (!exists)
         co_await co_create(symbol);
+
+    std::cout << "co_addSeries : Adding series to " << symbol << std::endl;
 
     co_await co_add(symbol+":low", s->timestamps, s->low);
     co_await co_add(symbol+":high", s->timestamps, s->high);
@@ -57,21 +67,22 @@ auto TimeSeriesService::co_add(const std::string& tsName, const std::vector<std:
     request req;
 
     std::size_t n = timeStamps.size();
+
     for(std::size_t i=0; i<n; i++)
         req.push("TS.ADD", tsName, timeStamps[i], values[i]);
 
-    response<std::string> resp;
+    generic_response resp;
 
     co_await m_conn->async_exec(req, resp, net::deferred);
 
     co_return;
 }
 
-auto TimeSeriesService::co_getSeries(const std::string& symbol, const std::string& from,
-                                     const std::string& to) -> net::awaitable<series *> {
+auto TimeSeriesService::co_getSeries(const std::string& symbol, const uint64_t from,
+                                     const uint64_t to) -> net::awaitable<series *> {
     bool exists = co_await co_exists(symbol);
     if (!exists) {
-        std::cout << "Cache miss" << std::endl;
+        std::cout << "Cache miss." << std::endl;
         co_return nullptr;
     }
 
@@ -79,35 +90,48 @@ auto TimeSeriesService::co_getSeries(const std::string& symbol, const std::strin
 
     series * s = new series(symbol);
 
-    std::vector<std::tuple<std::string, std::string>> key_value_pairs;
+    subseries * key_value_pairs;
     key_value_pairs = co_await co_get(symbol+":low", from, to);
-    fill_val(&s->low, key_value_pairs);
+    fill_val(&s->low, *key_value_pairs);
 
     key_value_pairs = co_await co_get(symbol+":high", from, to);
-    fill_val(&s->high, key_value_pairs);
+    fill_val(&s->high, *key_value_pairs);
 
     key_value_pairs = co_await co_get(symbol+":open", from, to);
-    fill_val(&s->open, key_value_pairs);
+    fill_val(&s->open, *key_value_pairs);
 
     key_value_pairs = co_await co_get(symbol+":close", from, to);
-    fill_val(&s->close, key_value_pairs);
+    fill_val(&s->close, *key_value_pairs);
 
-    fill_key(&s->timestamps, key_value_pairs);
+    fill_key(&s->timestamps, *key_value_pairs);
 
     co_return s;
 }
 
-auto TimeSeriesService::co_get(const std::string& tsName, const std::string& from,
-                               const std::string& to)-> net::awaitable<std::vector<std::tuple<std::string,
-                                                                                              std::string>>> {
+auto TimeSeriesService::co_get(const std::string& tsName, const uint64_t from,
+                                     const uint64_t to)-> net::awaitable<subseries *> {
     request req;
 
     req.push("TS.RANGE", tsName, from, to);
 
-    response<std::vector<std::tuple<std::string, std::string>>> resp;
+    //std::cout << "executing : " << "TS.RANGE " << tsName << " " << from << " " << to << std::endl;
 
-    co_await m_conn->async_exec(req, resp, net::deferred);
+    adapter::result<std::vector<resp3::node>> raw_resp;
+    subseries * ss = new subseries();
+    std::string t;
+
+    co_await m_conn->async_exec(req, raw_resp, net::use_awaitable);
+
+    for (auto const& node : raw_resp.value()) {
+
+        if (node.data_type == resp3::type::number) {
+            t = node.value;
+        } else if (node.data_type == resp3::type::doublean) {
+            ss->push_back({t, node.value});
+            //std::cout << std::get<0>(ss->back()) << ", " << std::get<1>(ss->back()) << std::endl;
+        }
+    }
 
     // return series
-    co_return std::get<0>(resp);
+    co_return ss;
 }
