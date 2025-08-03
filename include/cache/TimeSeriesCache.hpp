@@ -41,7 +41,7 @@ namespace hjw {
                 ~TimeSeriesCache();
 
                 // Enqueue a single request
-                void enque(TimeSeriesRequest& req);
+                void enque(TimeSeriesRequest&& req);
 
                 // Run start the io context and run cache loop
                 void run();
@@ -72,7 +72,7 @@ namespace hjw {
 
                 net::awaitable<void> requestHandler();
 
-                net::awaitable<void> handleGet(TimeSeriesRequest& req);
+                net::awaitable<void> handleGet(TimeSeriesRequest&& req);
 
             private:
 

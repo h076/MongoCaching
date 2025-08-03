@@ -15,8 +15,14 @@ add_custom_target(copy_compile_commands ALL
 # Add subdirectories
 add_subdirectory(src/mongo)
 add_subdirectory(src/redis)
+add_subdirectory(src/cache)
 
 add_executable(MRtest src/mongoAndRedis.cpp)
 
 # Link local directories and external libraries
 target_link_libraries(MRtest PRIVATE hjw_redis hjw_mongo)
+
+#add_executable(cacheTest src/cacheTest.cpp)
+
+# Link local directories and external libraries
+#target_link_libraries(cacheTest PRIVATE hjw_redis hjw_mongo hjw_cache)

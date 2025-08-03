@@ -15,6 +15,11 @@
 #include <memory>
 #include <optional>
 
+// Note on optimisation
+// C++14 and later has return value optimisation
+// So all pointers unique / shared should not be returne wrapped in move
+// Instead the call to the returning function should be wrappe in a move
+
 namespace hjw {
 
     namespace redis {
@@ -38,6 +43,16 @@ namespace hjw {
                     // Start async task to establish all connections
                     for (std::size_t i = 0; i < m_poolSize; i++)
                         createConnection(host, port);
+                }
+
+                ~connectionPool() {
+                    // Users responsibility to release all connections
+                    while (!m_connections.empty()) {
+                        std::shared_ptr<connection> conn = std::move(m_connections.front());
+                        m_connections.pop_front();
+                        if(conn)
+                            conn->cancel();
+                    }
                 }
 
                 // Acquire a connection asynchronously
@@ -106,13 +121,13 @@ namespace hjw {
                             if (!pool.m_connections.empty()) {
                                 auto conn = std::move(pool.m_connections.front());
                                 pool.m_connections.pop_front();
-                                self.complete(std::move(conn));
+                                self.complete(conn);
                             } else {
                                 // Save the handler to be resumed later
                                 using HandlerType = std::remove_reference_t<decltype(self)>;
                                 auto handler = std::make_shared<HandlerType>(std::move(self));
                                 pool.m_waiters.push_back([handler](std::shared_ptr<boost::redis::connection> conn) mutable {
-                                    (*handler).complete(std::move(conn));
+                                    (*handler).complete(conn);
                                 });
                                 //pool.m_waiters.push_back(
                                     //[h = std::move(self)](std::shared_ptr<boost::redis::connection> conn) mutable {

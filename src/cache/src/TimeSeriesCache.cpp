@@ -7,8 +7,14 @@
 using namespace hjw::cache;
 using namespace hjw::redis;
 
-void TimeSeriesCache::enque(TimeSeriesRequest& r)  {
-    m_reqQueue.push_back(r);
+TimeSeriesCache::~TimeSeriesCache() {
+
+}
+
+// taking the request as an rvalue and moving it to the queue
+// the request must be moved as it contains std::promise which cannot be copied
+void TimeSeriesCache::enque(TimeSeriesRequest&& r)  {
+    m_reqQueue.push_back(std::move(r));
 }
 
 void TimeSeriesCache::run() {
@@ -53,14 +59,14 @@ auto TimeSeriesCache::requestHandler() -> net::awaitable<void> {
         r = m_reqQueue.pop_front();
 
         if (r.type == RequestType::GET) {
-            co_await handleGet(r);
+            co_await handleGet(std::move(r));
         }
     }
 
     co_return;
 }
 
-auto TimeSeriesCache::handleGet(TimeSeriesRequest& r) -> net::awaitable<void> {
+auto TimeSeriesCache::handleGet(TimeSeriesRequest&& r) -> net::awaitable<void> {
     auto redisConn = co_await m_redisPool->acquire();
     redis::TimeSeriesService tsService(redisConn);
 
@@ -68,7 +74,8 @@ auto TimeSeriesCache::handleGet(TimeSeriesRequest& r) -> net::awaitable<void> {
 
     if (s) {
         std::cout << "Cache hit, " << r.symbol << std::endl;
-        r.getSeries.set_value(s);
+        r.getSeries->set_value(s);
+        m_redisPool->release(std::move(redisConn));
         co_return;
     }
 
@@ -76,9 +83,12 @@ auto TimeSeriesCache::handleGet(TimeSeriesRequest& r) -> net::awaitable<void> {
 
     // Must retrieve data from mongoDB and update cache
     std::scoped_lock lock(m_spotServiceMutex);
-
     s = m_mongoSpotService.get(r.symbol, r.from, r.to);
-    r.getSeries.set_value(s);
+    r.getSeries->set_value(s);
+
+    co_await tsService.co_addSeries(s);
+
+    m_redisPool->release(std::move(redisConn));
 
     co_return;
 }

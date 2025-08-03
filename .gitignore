@@ -5,3 +5,4 @@ tmp/
 
 build/
 src/mongo/src/connectionStrings.txt
+src/*.cpp
