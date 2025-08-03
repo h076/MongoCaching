@@ -105,6 +105,8 @@ auto TimeSeriesService::co_getSeries(const std::string& symbol, const uint64_t f
 
     fill_key(&s->timestamps, *key_value_pairs);
 
+    std::cout << "returning s \n";
+
     co_return s;
 }
 

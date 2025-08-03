@@ -1,7 +1,8 @@
 #ifndef TIMESERIESSERVICE_H_
 #define TIMESERIESSERVICE_H_
 
-#include <boost/redis.hpp>
+#include <boost/redis/connection.hpp>
+
 #include <boost/asio.hpp>
 #include <utils/spots.hpp>
 
@@ -21,6 +22,8 @@ namespace hjw {
 
                 TimeSeriesService(std::shared_ptr<boost::redis::connection> conn) : m_conn(std::move(conn)) {}
 
+                ~TimeSeriesService() {}
+
                 net::awaitable<void> co_create(const std::string& symbol);
 
                 net::awaitable<bool> co_exists(const std::string& symbol);
@@ -39,6 +42,10 @@ namespace hjw {
                 // Get a range of spot values
                 net::awaitable<utils::subseries *> co_get(const std::string& tsName, const uint64_t from,
                                                           const uint64_t to);
+
+                // move used her to explicilty state that this service no longer has ownership
+                // as connection is stored as a member variable
+                std::shared_ptr<boost::redis::connection> release() {return std::move(m_conn);}
 
             private:
                 inline void fill_val(std::vector<std::string> * bucket,

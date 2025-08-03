@@ -2,6 +2,7 @@
 #define TSQUEUE_H_
 
 // Taken from https://github.com/h076/asioNetworking/blob/main/networking/src/net_tsQueue.hpp
+// Slightly changed all "const T&" to "T&&"
 
 // thread safe network queue
 // Must be thread safe as at any one time multiple objects may want to alter the queue
@@ -27,19 +28,19 @@ namespace hjw {
             public:
 
                 // Return and maintain item at the front of the queue
-                const T& front() {
+                T&& front() {
                     std::scoped_lock lock(m_oMuxQueue);
                     return m_oDeqQueue.front();
                 }
 
                 // return and maintain item at the back of the queue
-                const T& back() {
+                T&& back() {
                     std::scoped_lock lock(m_oMuxQueue);
                     return m_oDeqQueue.back();
                 }
 
                 // Add item to back of queue
-                void push_back(const T& item) {
+                void push_back(T&& item) {
                     std::scoped_lock lock(m_oMuxQueue);
                     m_oDeqQueue.emplace_back(std::move(item));
 
@@ -50,7 +51,7 @@ namespace hjw {
                 }
 
                 // Add item to the front of queue
-                void push_front(const T& item) {
+                void push_front(T&& item) {
                     std::scoped_lock lock(m_oMuxQueue);
                     m_oDeqQueue.emplace_front(std::move(item));
 
