@@ -35,3 +35,5 @@ target_include_directories(hjw_cache
     PUBLIC
         ${PROJECT_SOURCE_DIR}/include
 )
+
+add_library(cache ALIAS hjw_cache)
