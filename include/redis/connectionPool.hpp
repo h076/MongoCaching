@@ -5,7 +5,6 @@
 #include <boost/asio/consign.hpp>
 #include <boost/asio/detached.hpp>
 
-#include <boost/redis/src.hpp>
 #include <boost/redis/logger.hpp>
 #include <boost/redis/connection.hpp>
 #include <boost/redis/config.hpp>

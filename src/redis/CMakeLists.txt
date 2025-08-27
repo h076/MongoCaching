@@ -1,9 +1,6 @@
 # External dependencies
 find_package(Boost_asio CONFIG REQUIRED)
 find_package(Boost_redis CONFIG REQUIRED)
-find_package(mongocxx CONFIG REQUIRED)
-find_package(bsoncxx CONFIG REQUIRED)
-find_package(RapidJSON CONFIG REQUIRED)
 
 add_library(hjw_redis STATIC)
 
@@ -23,12 +20,10 @@ target_sources(hjw_redis
 
 # Include path for this library
 target_link_libraries(hjw_redis
-    PRIVATE
+    PUBLIC
         Boost::asio
         Boost::redis
-        mongo::bsoncxx_static
-        mongo::mongocxx_static
-        RapidJSON
+        hjw_mongo
 )
 
 target_include_directories(hjw_redis

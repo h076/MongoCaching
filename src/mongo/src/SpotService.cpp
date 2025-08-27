@@ -1,14 +1,4 @@
-#include "utils/spots.hpp"
-#include <mongo/SpotService.hpp>
-
-#include <utils/time.hpp>
-#include <utils/spots.hpp>
-
-#include <bsoncxx/builder/stream/document.hpp>
-#include <bsoncxx/types.hpp>
-#include <bsoncxx/json.hpp>
-
-#include <rapidjson/document.h>
+#include "mongo/SpotService.hpp"
 
 using namespace hjw::mongo;
 using namespace hjw::utils;

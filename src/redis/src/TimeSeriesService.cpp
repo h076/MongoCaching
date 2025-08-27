@@ -1,8 +1,5 @@
-#include <boost/redis/response.hpp>
-#include <openssl/x509.h>
 #include <redis/TimeSeriesService.hpp>
 
-#include <iostream>
 
 using namespace hjw::utils;
 using namespace hjw::redis;

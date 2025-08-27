@@ -2,9 +2,14 @@
 #define CONNECTOR_H_
 
 #include <iostream>
+#include <fstream>
+
 #include <mongocxx/uri.hpp>
 #include <mongocxx/client.hpp>
 #include <mongocxx/instance.hpp>
+#include <mongocxx/exception/exception.hpp>
+
+#include <bsoncxx/json.hpp>
 
 namespace hjw {
 

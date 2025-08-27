@@ -1,10 +1,4 @@
 #include <mongo/Connector.hpp>
-#include <fstream>
-#include <stdexcept>
-#include <unordered_map>
-
-#include <mongocxx/exception/exception.hpp>
-#include <bsoncxx/json.hpp>
 
 using namespace hjw::mongo;
 
