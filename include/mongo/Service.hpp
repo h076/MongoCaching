@@ -2,13 +2,14 @@
 #define SERVICE_H_
 
 #include "Connector.hpp"
+
+#include <bsoncxx/builder/stream/document.hpp>
+#include <bsoncxx/types.hpp>
+
+#include <rapidjson/document.h>
+
+#include <utils/time.hpp>
 #include <utils/spots.hpp>
-
-#include <mongocxx/database.hpp>
-#include <mongocxx/collection.hpp>
-
-#include <bsoncxx/document/value.hpp>
-#include <bsoncxx/json.hpp>
 
 using namespace bsoncxx;
 
