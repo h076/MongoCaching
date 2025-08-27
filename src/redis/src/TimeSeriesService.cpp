@@ -1,3 +1,5 @@
+#include <boost/asio/awaitable.hpp>
+#include <boost/redis/response.hpp>
 #include <redis/TimeSeriesService.hpp>
 
 
@@ -128,4 +130,32 @@ auto TimeSeriesService::co_get(const std::string& tsName, const uint64_t from,
 
     // return series
     co_return ss;
+}
+
+auto TimeSeriesService::co_first_ts(const std::string& symbol) -> net::awaitable<int> {
+    request req;
+
+    req.push("TS.RANGE", symbol+":close", "-", "+", "COUNT", "1");
+
+    adapter::result<std::vector<resp3::node>> raw_resp;
+
+    co_await m_conn->async_exec(req, raw_resp, net::use_awaitable);
+
+    auto const& node = raw_resp.value().at(0);
+
+    co_return node.value;
+}
+
+auto TimeSeriesService::co_latest_ts(const std::string &symbol) -> net::awaitable<int> {
+    request req;
+
+    req.push("TS.GET", symbol+":close", "LATEST");
+
+    adapter::result<std::vector<resp3::node>> raw_resp;
+
+    co_await m_conn->async_exec(req, raw_resp, net::use_awaitable);
+
+    auto const& node = raw_resp.value().at(0);
+
+    co_return node.value;
 }
