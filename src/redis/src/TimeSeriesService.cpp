@@ -32,7 +32,7 @@ auto TimeSeriesService::co_exists(const std::string& symbol) -> net::awaitable<b
 
     co_await m_conn->async_exec(req, resp, net::deferred);
 
-    std::cout << "resp : " << resp.value().at(0).value << std::endl;
+    //std::cout << "resp : " << resp.value().at(0).value << std::endl;
 
     if (resp.value().at(0).value == "TSDB-TYPE")
         co_return true;
@@ -79,11 +79,8 @@ auto TimeSeriesService::co_getSeries(const std::string& symbol, const uint64_t f
                                      const uint64_t to) -> net::awaitable<series *> {
     bool exists = co_await co_exists(symbol);
     if (!exists) {
-        std::cout << "Cache miss." << std::endl;
         co_return nullptr;
     }
-
-    std::cout << "Cache hit." << std::endl;
 
     series * s = new series(symbol);
 
@@ -101,8 +98,6 @@ auto TimeSeriesService::co_getSeries(const std::string& symbol, const uint64_t f
     fill_val(&s->close, *key_value_pairs);
 
     fill_key(&s->timestamps, *key_value_pairs);
-
-    std::cout << "returning s \n";
 
     co_return s;
 }

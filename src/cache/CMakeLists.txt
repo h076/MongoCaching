@@ -1,4 +1,6 @@
 # External dependencies
+find_package(Microsoft.GSL CONFIG REQUIRED)
+
 add_library(hjw_cache STATIC)
 
 file(GLOB CACHE_SRC CONFIGURE_DEPENDS
@@ -19,6 +21,7 @@ target_sources(hjw_cache
 target_link_libraries(hjw_cache
     PUBLIC
         hjw_redis
+        Microsoft.GSL::GSL
 )
 
 target_include_directories(hjw_cache

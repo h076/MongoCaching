@@ -11,11 +11,15 @@ TimeSeriesCache::~TimeSeriesCache() {
 // taking the request as an rvalue and moving it to the queue
 // the request must be moved as it contains std::promise which cannot be copied
 void TimeSeriesCache::enque(TimeSeriesRequest&& r)  {
-    m_reqQueue.push_back(std::move(r));
+    if (m_accepting) {
+        m_active.fetch_add(1, std::memory_order_relaxed);
+        m_reqQueue.push_back(std::move(r));
+    }
 }
 
 void TimeSeriesCache::run() {
     m_running = true;
+    m_accepting = true;
 
     // Get context executor
     net::any_io_executor exec = m_ioc.get_executor();
@@ -33,16 +37,28 @@ void TimeSeriesCache::run() {
 }
 
 void TimeSeriesCache::stop() {
+    m_accepting = false;
+
+    // Wait for all active requests to finish
+    std::unique_lock<std::mutex> lk(m_activeMtx);
+    m_activeCv.wait(lk, [this] {return m_active.load(std::memory_order_relaxed) == 0;});
+
+    std::cout << "all req processed " << std::endl;
+
+    // tell request loop to stop
     m_running = false;
+    // send false request to unwait queue
+    TimeSeriesRequest fr{RequestType::SET, "", 0, 0, nullptr};
+    m_reqQueue.push_back(std::move(fr));
 
     // allow io ctx to stop as guard is released
     m_ctxGuard.reset();
-
+    // stop io context
     m_ioc.stop();
-
-    if (m_ctxThread.joinable())
-        m_ctxThread.join();
-
+    // join dedicated thread
+    while (!m_ctxThread.joinable())
+        continue;
+    m_ctxThread.join();
 }
 
 auto TimeSeriesCache::requestHandler() -> net::awaitable<void> {
@@ -50,8 +66,12 @@ auto TimeSeriesCache::requestHandler() -> net::awaitable<void> {
 
     while (m_running) {
         // handle requests
-        if (m_reqQueue.empty())
-            continue;
+
+        // use wait function rather than busy spining
+        m_reqQueue.wait();
+
+        if (!m_running)
+            break;
 
         r = m_reqQueue.pop_front();
 
@@ -64,6 +84,14 @@ auto TimeSeriesCache::requestHandler() -> net::awaitable<void> {
 }
 
 auto TimeSeriesCache::handleGet(TimeSeriesRequest&& r) -> net::awaitable<void> {
+    // handle request counter
+    auto onExit = gsl::finally([this] {
+        if (m_active.fetch_sub(1, std::memory_order_relaxed) == 1) {
+            std::lock_guard<std::mutex> lk(m_activeMtx);
+            m_activeCv.notify_all();
+        }
+    });
+
     auto redisConn = co_await m_redisPool->acquire();
     redis::TimeSeriesService tsService(redisConn);
 

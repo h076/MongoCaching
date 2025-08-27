@@ -8,3 +8,8 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 add_subdirectory(src/mongo)
 add_subdirectory(src/redis)
 add_subdirectory(src/cache)
+
+# Only add test dir if present
+if(IS_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/src/tests")
+  add_subdirectory(src/tests)
+endif()
