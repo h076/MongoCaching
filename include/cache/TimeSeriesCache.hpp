@@ -79,6 +79,9 @@ namespace hjw {
 
                 net::awaitable<void> handleGet(TimeSeriesRequest&& req);
 
+                net::awaitable<utils::series*> handleMiss(const std::string& symbol, const uint64_t from,
+                                                          const uint64_t to, redis::TimeSeriesService * tss);
+
             private:
 
                 // Handle mongo connection with one connector

@@ -1,5 +1,7 @@
 
+#include "redis/TimeSeriesService.hpp"
 #include <cache/TimeSeriesCache.hpp>
+#include <sys/types.h>
 
 using namespace hjw::cache;
 using namespace hjw::redis;
@@ -95,25 +97,66 @@ auto TimeSeriesCache::handleGet(TimeSeriesRequest&& r) -> net::awaitable<void> {
     auto redisConn = co_await m_redisPool->acquire();
     redis::TimeSeriesService tsService(redisConn);
 
-    utils::series * s = co_await tsService.co_getSeries(r.symbol, r.from, r.to);
+    uint64_t from = r.from;
+    uint64_t to = r.to;
 
-    if (s) {
-        std::cout << "Cache hit, " << r.symbol << std::endl;
+    utils::series * s;
+
+    // check if the series exists in cache
+    bool exists = co_await tsService.co_exists(r.symbol);
+    if (!exists) {
+        std::cout << "Cache Miss : " << r.symbol << ", " << r.from << " : " << r.to << std::endl;
+        s = co_await handleMiss(r.symbol, from, to, &tsService);
         r.getSeries->set_value(s);
         m_redisPool->release(std::move(redisConn));
         co_return;
     }
 
-    std::cout << "Cache miss, " << r.symbol << std::endl;
+    // check that the request time is within existing bounds
+    uint64_t leftBound = co_await tsService.co_first_ts(r.symbol);
+    uint64_t rightBound = co_await tsService.co_latest_ts(r.symbol);
 
-    // Must retrieve data from mongoDB and update cache
-    std::scoped_lock lock(m_spotServiceMutex);
-    s = m_mongoSpotService.get(r.symbol, r.from, r.to);
+    // handle misses ....
+    if (leftBound > to || rightBound < from)
+    {
+        // Complete miss : leftBound > to || rightBound < from
+        std::cout << "Cache Miss : " << r.symbol << ", " << from << " : " << to << std::endl;
+        s = co_await handleMiss(r.symbol, r.from, r.to, &tsService);
+    }
+    else if (leftBound > from)
+    {
+        // Partial miss at series start : leftBound > from
+        std::cout << "Partial Miss : " << r.symbol << ", " << from << " : " << leftBound << std::endl;
+        co_await handleMiss(r.symbol, from, leftBound, &tsService);
+        s = co_await tsService.co_getSeries(r.symbol, from, to);
+    }
+    else if (rightBound < to)
+    {
+        // Partial miss at series end : rightBount < to
+        std::cout << "Partial Miss : " << r.symbol << ", " << rightBound << " : " << to << std::endl;
+        co_await handleMiss(r.symbol, rightBound, to, &tsService);
+        s = co_await tsService.co_getSeries(r.symbol, from, to);
+    }
+    else
+    {
+        std::cout << "Cache Hit : " << r.symbol << ", " << from << " : " << to << std::endl;
+        s = co_await tsService.co_getSeries(r.symbol, from, to);
+    }
+
     r.getSeries->set_value(s);
-
-    co_await tsService.co_addSeries(s);
-
     m_redisPool->release(std::move(redisConn));
-
     co_return;
+}
+
+auto TimeSeriesCache::handleMiss(const std::string& symbol, const uint64_t from, const uint64_t to,
+                                 redis::TimeSeriesService * tss) -> net::awaitable<utils::series *> {
+    // Use lock to enforce mutual exclusion
+    std::scoped_lock lock(m_spotServiceMutex);
+
+    // retreive data from mongoDB
+    utils::series * s = m_mongoSpotService.get(symbol, from, to);
+
+    co_await tss->co_addSeries(s);
+
+    co_return s;
 }

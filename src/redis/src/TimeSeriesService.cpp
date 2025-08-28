@@ -79,10 +79,8 @@ auto TimeSeriesService::co_add(const std::string& tsName, const std::vector<std:
 
 auto TimeSeriesService::co_getSeries(const std::string& symbol, const uint64_t from,
                                      const uint64_t to) -> net::awaitable<series *> {
-    bool exists = co_await co_exists(symbol);
-    if (!exists) {
-        co_return nullptr;
-    }
+    // Move exist check to within the cache
+    // redis service should assume all checks have been made by cache
 
     series * s = new series(symbol);
 
@@ -132,7 +130,7 @@ auto TimeSeriesService::co_get(const std::string& tsName, const uint64_t from,
     co_return ss;
 }
 
-auto TimeSeriesService::co_first_ts(const std::string& symbol) -> net::awaitable<int> {
+auto TimeSeriesService::co_first_ts(const std::string& symbol) -> net::awaitable<uint64_t> {
     request req;
 
     req.push("TS.RANGE", symbol+":close", "-", "+", "COUNT", "1");
@@ -143,10 +141,10 @@ auto TimeSeriesService::co_first_ts(const std::string& symbol) -> net::awaitable
 
     auto const& node = raw_resp.value().at(0);
 
-    co_return node.value;
+    co_return static_cast<uint64_t>(stoi(node.value));
 }
 
-auto TimeSeriesService::co_latest_ts(const std::string &symbol) -> net::awaitable<int> {
+auto TimeSeriesService::co_latest_ts(const std::string &symbol) -> net::awaitable<uint64_t> {
     request req;
 
     req.push("TS.GET", symbol+":close", "LATEST");
@@ -157,5 +155,5 @@ auto TimeSeriesService::co_latest_ts(const std::string &symbol) -> net::awaitabl
 
     auto const& node = raw_resp.value().at(0);
 
-    co_return node.value;
+    co_return static_cast<uint64_t>(stoi(node.value));
 }

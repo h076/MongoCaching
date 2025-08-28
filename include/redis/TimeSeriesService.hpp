@@ -44,10 +44,10 @@ namespace hjw {
                                                           const uint64_t to);
 
                 // Get oldest timestamp
-                net::awaitable<int> co_first_ts(const std::string& symbol);
+                net::awaitable<uint64_t> co_first_ts(const std::string& symbol);
 
                 // Get most recent timestamp
-                net::awaitable<int> co_latest_ts(const std::string& symbol);
+                net::awaitable<uint64_t> co_latest_ts(const std::string& symbol);
 
                 // move used her to explicilty state that this service no longer has ownership
                 // as connection is stored as a member variable
