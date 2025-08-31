@@ -139,9 +139,9 @@ auto TimeSeriesService::co_first_ts(const std::string& symbol) -> net::awaitable
 
     co_await m_conn->async_exec(req, raw_resp, net::use_awaitable);
 
-    auto const& node = raw_resp.value().at(0);
+    auto const& node = raw_resp.value();
 
-    co_return static_cast<uint64_t>(stoi(node.value));
+    co_return stoull(node[2].value);
 }
 
 auto TimeSeriesService::co_latest_ts(const std::string &symbol) -> net::awaitable<uint64_t> {
@@ -153,7 +153,7 @@ auto TimeSeriesService::co_latest_ts(const std::string &symbol) -> net::awaitabl
 
     co_await m_conn->async_exec(req, raw_resp, net::use_awaitable);
 
-    auto const& node = raw_resp.value().at(0);
+    auto const& node = raw_resp.value();
 
-    co_return static_cast<uint64_t>(stoi(node.value));
+    co_return stoull(node[1].value);
 }

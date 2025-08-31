@@ -45,8 +45,6 @@ void TimeSeriesCache::stop() {
     std::unique_lock<std::mutex> lk(m_activeMtx);
     m_activeCv.wait(lk, [this] {return m_active.load(std::memory_order_relaxed) == 0;});
 
-    std::cout << "all req processed " << std::endl;
-
     // tell request loop to stop
     m_running = false;
     // send false request to unwait queue
@@ -58,9 +56,8 @@ void TimeSeriesCache::stop() {
     // stop io context
     m_ioc.stop();
     // join dedicated thread
-    while (!m_ctxThread.joinable())
-        continue;
-    m_ctxThread.join();
+    if(m_ctxThread.joinable())
+        m_ctxThread.join();
 }
 
 auto TimeSeriesCache::requestHandler() -> net::awaitable<void> {
@@ -86,6 +83,7 @@ auto TimeSeriesCache::requestHandler() -> net::awaitable<void> {
 }
 
 auto TimeSeriesCache::handleGet(TimeSeriesRequest&& r) -> net::awaitable<void> {
+
     // handle request counter
     auto onExit = gsl::finally([this] {
         if (m_active.fetch_sub(1, std::memory_order_relaxed) == 1) {
@@ -112,9 +110,11 @@ auto TimeSeriesCache::handleGet(TimeSeriesRequest&& r) -> net::awaitable<void> {
         co_return;
     }
 
+    constexpr uint64_t epoch_12_hours = 43200000;
+
     // check that the request time is within existing bounds
-    uint64_t leftBound = co_await tsService.co_first_ts(r.symbol);
-    uint64_t rightBound = co_await tsService.co_latest_ts(r.symbol);
+    uint64_t leftBound = co_await tsService.co_first_ts(r.symbol) - epoch_12_hours;
+    uint64_t rightBound = co_await tsService.co_latest_ts(r.symbol) + epoch_12_hours;
 
     // handle misses ....
     if (leftBound > to || rightBound < from)
@@ -122,22 +122,19 @@ auto TimeSeriesCache::handleGet(TimeSeriesRequest&& r) -> net::awaitable<void> {
         // Complete miss : leftBound > to || rightBound < from
         std::cout << "Cache Miss : " << r.symbol << ", " << from << " : " << to << std::endl;
         s = co_await handleMiss(r.symbol, r.from, r.to, &tsService);
-    }
-    else if (leftBound > from)
+    } else if (leftBound > from)
     {
         // Partial miss at series start : leftBound > from
-        std::cout << "Partial Miss : " << r.symbol << ", " << from << " : " << leftBound << std::endl;
-        co_await handleMiss(r.symbol, from, leftBound, &tsService);
+        std::cout << "Partial Miss at start : " << r.symbol << ", " << from << " : " << leftBound << std::endl;
+        co_await handleMiss(r.symbol, from - epoch_12_hours, leftBound, &tsService);
         s = co_await tsService.co_getSeries(r.symbol, from, to);
-    }
-    else if (rightBound < to)
+    } else if (rightBound < to)
     {
         // Partial miss at series end : rightBount < to
-        std::cout << "Partial Miss : " << r.symbol << ", " << rightBound << " : " << to << std::endl;
-        co_await handleMiss(r.symbol, rightBound, to, &tsService);
+        std::cout << "Partial Miss at end : " << r.symbol << ", " << rightBound << " : " << to << std::endl;
+        co_await handleMiss(r.symbol, rightBound, to + epoch_12_hours, &tsService);
         s = co_await tsService.co_getSeries(r.symbol, from, to);
-    }
-    else
+    } else
     {
         std::cout << "Cache Hit : " << r.symbol << ", " << from << " : " << to << std::endl;
         s = co_await tsService.co_getSeries(r.symbol, from, to);
