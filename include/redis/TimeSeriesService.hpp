@@ -43,6 +43,12 @@ namespace hjw {
                 net::awaitable<utils::subseries *> co_get(const std::string& tsName, const uint64_t from,
                                                           const uint64_t to);
 
+                // Get oldest timestamp
+                net::awaitable<uint64_t> co_first_ts(const std::string& symbol);
+
+                // Get most recent timestamp
+                net::awaitable<uint64_t> co_latest_ts(const std::string& symbol);
+
                 // move used her to explicilty state that this service no longer has ownership
                 // as connection is stored as a member variable
                 std::shared_ptr<boost::redis::connection> release() {return std::move(m_conn);}

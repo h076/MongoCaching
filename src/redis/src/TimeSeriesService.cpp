@@ -1,3 +1,5 @@
+#include <boost/asio/awaitable.hpp>
+#include <boost/redis/response.hpp>
 #include <redis/TimeSeriesService.hpp>
 
 
@@ -32,7 +34,7 @@ auto TimeSeriesService::co_exists(const std::string& symbol) -> net::awaitable<b
 
     co_await m_conn->async_exec(req, resp, net::deferred);
 
-    std::cout << "resp : " << resp.value().at(0).value << std::endl;
+    //std::cout << "resp : " << resp.value().at(0).value << std::endl;
 
     if (resp.value().at(0).value == "TSDB-TYPE")
         co_return true;
@@ -77,13 +79,8 @@ auto TimeSeriesService::co_add(const std::string& tsName, const std::vector<std:
 
 auto TimeSeriesService::co_getSeries(const std::string& symbol, const uint64_t from,
                                      const uint64_t to) -> net::awaitable<series *> {
-    bool exists = co_await co_exists(symbol);
-    if (!exists) {
-        std::cout << "Cache miss." << std::endl;
-        co_return nullptr;
-    }
-
-    std::cout << "Cache hit." << std::endl;
+    // Move exist check to within the cache
+    // redis service should assume all checks have been made by cache
 
     series * s = new series(symbol);
 
@@ -101,8 +98,6 @@ auto TimeSeriesService::co_getSeries(const std::string& symbol, const uint64_t f
     fill_val(&s->close, *key_value_pairs);
 
     fill_key(&s->timestamps, *key_value_pairs);
-
-    std::cout << "returning s \n";
 
     co_return s;
 }
@@ -133,4 +128,32 @@ auto TimeSeriesService::co_get(const std::string& tsName, const uint64_t from,
 
     // return series
     co_return ss;
+}
+
+auto TimeSeriesService::co_first_ts(const std::string& symbol) -> net::awaitable<uint64_t> {
+    request req;
+
+    req.push("TS.RANGE", symbol+":close", "-", "+", "COUNT", "1");
+
+    adapter::result<std::vector<resp3::node>> raw_resp;
+
+    co_await m_conn->async_exec(req, raw_resp, net::use_awaitable);
+
+    auto const& node = raw_resp.value();
+
+    co_return stoull(node[2].value);
+}
+
+auto TimeSeriesService::co_latest_ts(const std::string &symbol) -> net::awaitable<uint64_t> {
+    request req;
+
+    req.push("TS.GET", symbol+":close", "LATEST");
+
+    adapter::result<std::vector<resp3::node>> raw_resp;
+
+    co_await m_conn->async_exec(req, raw_resp, net::use_awaitable);
+
+    auto const& node = raw_resp.value();
+
+    co_return stoull(node[1].value);
 }
