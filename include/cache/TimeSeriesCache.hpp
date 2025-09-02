@@ -3,6 +3,7 @@
 
 #include <boost/asio/any_io_executor.hpp>
 #include <boost/asio/executor_work_guard.hpp>
+#include <condition_variable>
 #include <utils/tsQueue.hpp>
 #include <cache/Requests.hpp>
 
@@ -13,6 +14,10 @@
 
 #include <mongo/Connector.hpp>
 #include <mongo/SpotService.hpp>
+
+#include <gsl/gsl>
+#include <mutex>
+#include <atomic>
 
 // Caching interface class to be run on a single thread.
 // Using async operations to implement a read-through pattern.
@@ -74,6 +79,9 @@ namespace hjw {
 
                 net::awaitable<void> handleGet(TimeSeriesRequest&& req);
 
+                net::awaitable<utils::series*> handleMiss(const std::string& symbol, const uint64_t from,
+                                                          const uint64_t to, redis::TimeSeriesService * tss);
+
             private:
 
                 // Handle mongo connection with one connector
@@ -83,6 +91,25 @@ namespace hjw {
                 // This service should be made thread safe using
                 mongo::SpotService m_mongoSpotService;
                 std::mutex m_spotServiceMutex;
+
+            private:
+
+                // At the moment this structure should ensure all reuquests
+                // that have been enqueued before the stop function is called
+                // will be processed
+
+                // Alternatively we could use a STOP reuqest that will kill
+                // the cache once processed.
+
+                // Handle a clean stopping phase
+                // Use an atomic counter with a mutex and cv pair
+                // This counter should count the number of active requests
+                std::atomic<int> m_active{0};
+                std::mutex m_activeMtx;
+                std::condition_variable m_activeCv;
+
+                // use a bool to identify that we are accepting requests
+                bool m_accepting;
 
         };
     }
