@@ -32,8 +32,8 @@ namespace hjw {
                 net::awaitable<void> co_addSeries(utils::series * s);
 
                 // Add a range of spot values
-                net::awaitable<void> co_add(const std::string& tsName, const std::vector<std::string>& timeStamps,
-                                            const std::vector<std::string>& values);
+                net::awaitable<void> co_add(const std::string& tsName, const std::vector<double>& timeStamps,
+                                            const std::vector<double>& values);
 
                 // Get a whole chunk of spots
                 net::awaitable<utils::series *> co_getSeries(const std::string& symbol, const uint64_t from,
@@ -54,7 +54,7 @@ namespace hjw {
                 std::shared_ptr<boost::redis::connection> release() {return std::move(m_conn);}
 
             private:
-                inline void fill_val(std::vector<std::string> * bucket,
+                inline void fill_val(std::vector<double> * bucket,
                                      utils::subseries& tap) {
                     bucket->clear();
                     bucket->reserve(tap.size());
@@ -66,7 +66,7 @@ namespace hjw {
                     bucket->assign(values.begin(), values.end());
                 }
 
-                inline void fill_key(std::vector<std::string> * bucket,
+                inline void fill_key(std::vector<double> * bucket,
                                      utils::subseries& tap) {
                     bucket->clear();
                     bucket->reserve(tap.size());

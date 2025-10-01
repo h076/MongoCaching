@@ -61,8 +61,8 @@ auto TimeSeriesService::co_addSeries(series * s) -> net::awaitable<void> {
 }
 
 // must add checking correctly for things such as num of values vs timestamps
-auto TimeSeriesService::co_add(const std::string& tsName, const std::vector<std::string>& timeStamps,
-                               const std::vector<std::string>& values) -> net::awaitable<void> {
+auto TimeSeriesService::co_add(const std::string& tsName, const std::vector<double>& timeStamps,
+                               const std::vector<double>& values) -> net::awaitable<void> {
     request req;
 
     std::size_t n = timeStamps.size();
@@ -112,16 +112,16 @@ auto TimeSeriesService::co_get(const std::string& tsName, const uint64_t from,
 
     adapter::result<std::vector<resp3::node>> raw_resp;
     subseries * ss = new subseries();
-    std::string t;
+    double t;
 
     co_await m_conn->async_exec(req, raw_resp, net::use_awaitable);
 
     for (auto const& node : raw_resp.value()) {
 
         if (node.data_type == resp3::type::number) {
-            t = node.value;
+            t = stod(node.value);
         } else if (node.data_type == resp3::type::doublean) {
-            ss->push_back({t, node.value});
+            ss->push_back({t, stod(node.value)});
             //std::cout << std::get<0>(ss->back()) << ", " << std::get<1>(ss->back()) << std::endl;
         }
     }

@@ -155,5 +155,7 @@ auto TimeSeriesCache::handleMiss(const std::string& symbol, const uint64_t from,
 
     co_await tss->co_addSeries(s);
 
+    std::cout << "series returned and added .. "<< std::endl;
+
     co_return s;
 }
