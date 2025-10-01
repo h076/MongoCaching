@@ -9,6 +9,8 @@
 #include <ranges>
 #include <algorithm>
 
+#include "bulk_float_patch.hpp"
+
 namespace hjw {
 
     namespace redis {
