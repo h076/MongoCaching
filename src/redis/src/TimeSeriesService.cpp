@@ -68,7 +68,7 @@ auto TimeSeriesService::co_add(const std::string& tsName, const std::vector<doub
     std::size_t n = timeStamps.size();
 
     for(std::size_t i=0; i<n; i++)
-        req.push("TS.ADD", tsName, timeStamps[i], values[i]);
+        req.push("TS.ADD", tsName, std::to_string(timeStamps[i]), std::to_string(values[i]));
 
     generic_response resp;
 
