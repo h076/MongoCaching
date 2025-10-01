@@ -18,24 +18,24 @@ namespace hjw {
         // redis post
         struct series {
             std::string symbol;
-            std::vector<std::string> timestamps;
-            std::vector<std::string> low;
-            std::vector<std::string> high;
-            std::vector<std::string> close;
-            std::vector<std::string> open;
+            std::vector<double> timestamps;
+            std::vector<double> low;
+            std::vector<double> high;
+            std::vector<double> close;
+            std::vector<double> open;
 
             series(const std::string& s) : symbol(s) {}
         };
 
         // simple type to use net::awaitable
-        typedef std::vector<std::tuple<std::string, std::string>> subseries;
+        typedef std::vector<std::tuple<double, double>> subseries;
 
         inline void appendToSeries(series& s, rapidjson::Document& doc) {
-            s.timestamps.push_back(std::to_string(doc["timestamp"]["$date"].GetInt64()));
-            s.low.push_back(std::to_string(doc["low"].GetDouble()));
-            s.high.push_back(std::to_string(doc["high"].GetDouble()));
-            s.close.push_back(std::to_string(doc["close"].GetDouble()));
-            s.open.push_back(std::to_string(doc["open"].GetDouble()));
+            s.timestamps.push_back(static_cast<double>(doc["timestamp"]["$date"].GetInt64()));
+            s.low.push_back(doc["low"].GetDouble());
+            s.high.push_back(doc["high"].GetDouble());
+            s.close.push_back(doc["close"].GetDouble());
+            s.open.push_back(doc["open"].GetDouble());
         }
 
     }
