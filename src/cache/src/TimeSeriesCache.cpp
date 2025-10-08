@@ -1,4 +1,5 @@
 
+#include "cache/Requests.hpp"
 #include "redis/TimeSeriesService.hpp"
 #include <cache/TimeSeriesCache.hpp>
 #include <sys/types.h>
@@ -48,7 +49,7 @@ void TimeSeriesCache::stop() {
     // tell request loop to stop
     m_running = false;
     // send false request to unwait queue
-    TimeSeriesRequest fr{RequestType::SET, "", 0, 0, nullptr};
+    TimeSeriesRequest<RequestType::SET> fr{"", 0, 0, nullptr};
     m_reqQueue.push_back(std::move(fr));
 
     // allow io ctx to stop as guard is released
@@ -61,7 +62,7 @@ void TimeSeriesCache::stop() {
 }
 
 auto TimeSeriesCache::requestHandler() -> net::awaitable<void> {
-    TimeSeriesRequest r;
+    RequestTypeVariant req;
 
     while (m_running) {
         // handle requests
@@ -72,17 +73,26 @@ auto TimeSeriesCache::requestHandler() -> net::awaitable<void> {
         if (!m_running)
             break;
 
-        r = m_reqQueue.pop_front();
+        req = m_reqQueue.pop_front();
 
-        if (r.type == RequestType::GET) {
-            co_await handleGet(std::move(r));
-        }
+        co_await std::visit([this](auto&& r) -> net::awaitable<void> {
+            using req = std::decay_t<decltype(r)>;
+            if constexpr (req::type == RequestType::GET)
+                co_await handleGet(std::move(r));
+            else if constexpr (req::type == RequestType::SET)
+                co_await handleSet(std::move(r));
+            else if constexpr (req::type == RequestType::INFO)
+                co_await handleInfo(std::move(r));
+            else if constexpr (req::type == RequestType::STOP_CACHE)
+                this->m_running = false;
+        }, std::move(req));
+
     }
 
     co_return;
 }
 
-auto TimeSeriesCache::handleGet(TimeSeriesRequest&& r) -> net::awaitable<void> {
+auto TimeSeriesCache::handleGet(TimeSeriesRequest<RequestType::GET>&& r) -> net::awaitable<void> {
 
     // handle request counter
     auto onExit = gsl::finally([this] {
@@ -105,7 +115,7 @@ auto TimeSeriesCache::handleGet(TimeSeriesRequest&& r) -> net::awaitable<void> {
     if (!exists) {
         std::cout << "Cache Miss : " << r.symbol << ", " << r.from << " : " << r.to << std::endl;
         s = co_await handleMiss(r.symbol, from, to, &tsService);
-        r.getSeries->set_value(s);
+        r.series->set_value(s);
         m_redisPool->release(std::move(redisConn));
         co_return;
     }
@@ -140,9 +150,48 @@ auto TimeSeriesCache::handleGet(TimeSeriesRequest&& r) -> net::awaitable<void> {
         s = co_await tsService.co_getSeries(r.symbol, from, to);
     }
 
-    r.getSeries->set_value(s);
+    r.series->set_value(s);
     m_redisPool->release(std::move(redisConn));
     co_return;
+}
+
+auto TimeSeriesCache::handleSet(TimeSeriesRequest<RequestType::SET>&& req) -> net::awaitable<void> {
+    // Yet to implement
+    co_return;
+}
+
+auto TimeSeriesCache::handleInfo(TimeSeriesRequest<RequestType::INFO>&& req) -> net::awaitable<void> {
+    // Want to query the cache to see if a ticket exists
+    // handle request counter
+    auto onExit = gsl::finally([this] {
+        if (m_active.fetch_sub(1, std::memory_order_relaxed) == 1) {
+            std::lock_guard<std::mutex> lk(m_activeMtx);
+            m_activeCv.notify_all();
+        }
+    });
+
+    auto redisConn = co_await m_redisPool->acquire();
+    redis::TimeSeriesService tsService(redisConn);
+
+    // check if the series exists
+    bool cacheExists = co_await tsService.co_exists(req.symbol);
+
+    if (!cacheExists) {
+        req.exists->set_value(co_await handleMissInfo(req.symbol));
+    }else {
+        req.exists->set_value(true);
+    }
+    co_return;
+}
+
+auto TimeSeriesCache::handleMissInfo(const std::string& symbol) -> net::awaitable<bool> {
+    // Check if the series exists in the mongo cluster
+    utils::seriesInfo * si = m_mongoSpotService.info(symbol);
+    if (si != nullptr) {
+        free(si);
+        co_return true;
+    }
+    co_return false;
 }
 
 auto TimeSeriesCache::handleMiss(const std::string& symbol, const uint64_t from, const uint64_t to,
