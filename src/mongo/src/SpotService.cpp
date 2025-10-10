@@ -80,11 +80,11 @@ seriesInfo * SpotService::info(const std::string& symbol) {
 
     // Only one document should be returned
     auto&& doc = *(it);
-    std::cout << bsoncxx::to_json(doc) << std::endl;
     rapidjson::Document jd;
+    jd.Parse(bsoncxx::to_json(doc).c_str());
 
-    uint64_t minTs = jd["minTimestamp"]["$date"].GetDouble();
-    uint64_t maxTs = jd["maxTimestamp"]["$date"].GetDouble();
+    int64_t minTs = jd["minTimestamp"]["$date"].GetInt64();
+    int64_t maxTs = jd["maxTimestamp"]["$date"].GetInt64();
 
     seriesInfo * si = new seriesInfo(symbol, minTs, maxTs);
 
