@@ -1,4 +1,6 @@
 #include "mongo/SpotService.hpp"
+#include <bsoncxx/builder/stream/helpers.hpp>
+#include <string>
 
 using namespace hjw::mongo;
 using namespace hjw::utils;
@@ -43,6 +45,50 @@ series * SpotService::get(const std::string& symbol, const std::chrono::system_c
     }
 
     return s;
+}
+
+seriesInfo * SpotService::info(const std::string& symbol) {
+    using bsoncxx::builder::stream::document;
+    using bsoncxx::builder::stream::open_document;
+    using bsoncxx::builder::stream::close_document;
+    using bsoncxx::builder::stream::finalize;
+
+    // construct document
+    // match stage
+    mongocxx::pipeline pipeline;
+    pipeline.match(document{}
+                   << "symbol" << symbol
+                   << finalize);
+
+    // group stage
+    pipeline.group(document{}
+                   << "_id" << bsoncxx::types::b_null{}
+                   << "maxTimestamp" << open_document << "$max" << "$timestamp" << close_document
+                   << "minTimestamp" << open_document << "$min" << "$timestamp" << close_document
+                   << finalize);
+
+    // Run aggregation
+    auto cursor = collection.aggregate(pipeline);
+
+    // Does the symbol exists ?
+    auto it = cursor.begin();
+    if (it == cursor.end()) {
+        return nullptr;
+    }
+
+
+
+    // Only one document should be returned
+    auto&& doc = *(it);
+    std::cout << bsoncxx::to_json(doc) << std::endl;
+    rapidjson::Document jd;
+
+    uint64_t minTs = jd["minTimestamp"]["$date"].GetDouble();
+    uint64_t maxTs = jd["maxTimestamp"]["$date"].GetDouble();
+
+    seriesInfo * si = new seriesInfo(symbol, minTs, maxTs);
+
+    return si;
 }
 
 void SpotService::post() {

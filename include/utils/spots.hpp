@@ -38,6 +38,16 @@ namespace hjw {
             s.open.push_back(doc["open"].GetDouble());
         }
 
+        // Information about a complete time series
+        struct seriesInfo {
+            std::string symbol;
+            uint64_t minStamp;
+            uint64_t maxStamp;
+
+            seriesInfo(const std::string& s, uint64_t min, uint64_t max)
+                : symbol(s), minStamp(min), maxStamp(max) {}
+        };
+
     }
 }
 

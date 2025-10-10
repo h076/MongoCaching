@@ -2,6 +2,7 @@
 #define SPOTSERVICE_H_
 
 #include "Service.hpp"
+#include "utils/spots.hpp"
 
 namespace hjw {
 
@@ -20,6 +21,8 @@ namespace hjw {
 
                 utils::series * get(const std::string& symbol, const std::chrono::system_clock::time_point from,
                                     const std::chrono::system_clock::time_point to) override;
+
+                utils::seriesInfo * info(const std::string& symbol);
 
                 void post() override;
         };
