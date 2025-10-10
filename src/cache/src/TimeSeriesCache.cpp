@@ -217,9 +217,10 @@ auto TimeSeriesCache::handleMiss(const std::string& symbol, const uint64_t from,
     // retreive data from mongoDB
     utils::series * s = m_mongoSpotService.get(symbol, from, to);
 
-    co_await tss->co_addSeries(s);
+    if (s == nullptr)
+        co_return s;
 
-    std::cout << "series returned and added .. "<< std::endl;
+    co_await tss->co_addSeries(s);
 
     co_return s;
 }
