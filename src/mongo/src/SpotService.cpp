@@ -32,6 +32,11 @@ series * SpotService::get(const std::string& symbol, const std::chrono::system_c
     // Execute the query
     auto cursor = collection.find(doc.view());
 
+    if (cursor.begin() == cursor.end()) {
+        std::cout << "Invalid time range for symbol : " << symbol << " - No spots returned." << std::endl;
+        return nullptr;
+    }
+
     rapidjson::Document jd;
     series* s = new series(symbol);
     // Iterate through results and build series
@@ -76,15 +81,13 @@ seriesInfo * SpotService::info(const std::string& symbol) {
         return nullptr;
     }
 
-
-
     // Only one document should be returned
     auto&& doc = *(it);
     rapidjson::Document jd;
     jd.Parse(bsoncxx::to_json(doc).c_str());
 
-    int64_t minTs = jd["minTimestamp"]["$date"].GetInt64();
-    int64_t maxTs = jd["maxTimestamp"]["$date"].GetInt64();
+    uint64_t minTs = jd["minTimestamp"]["$date"].GetUint64();
+    uint64_t maxTs = jd["maxTimestamp"]["$date"].GetUint64();
 
     seriesInfo * si = new seriesInfo(symbol, minTs, maxTs);
 

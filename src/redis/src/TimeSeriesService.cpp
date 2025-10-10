@@ -63,7 +63,7 @@ auto TimeSeriesService::co_addSeries(series * s) -> net::awaitable<void> {
 }
 
 // must add checking correctly for things such as num of values vs timestamps
-auto TimeSeriesService::co_add(const std::string& tsName, const std::vector<double>& timeStamps,
+auto TimeSeriesService::co_add(const std::string& tsName, const std::vector<uint64_t>& timeStamps,
                                const std::vector<double>& values) -> net::awaitable<void> {
     request req;
 

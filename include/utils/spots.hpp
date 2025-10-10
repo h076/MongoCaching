@@ -18,7 +18,7 @@ namespace hjw {
         // redis post
         struct series {
             std::string symbol;
-            std::vector<double> timestamps;
+            std::vector<uint64_t> timestamps;
             std::vector<double> low;
             std::vector<double> high;
             std::vector<double> close;
@@ -28,10 +28,10 @@ namespace hjw {
         };
 
         // simple type to use net::awaitable
-        typedef std::vector<std::tuple<double, double>> subseries;
+        typedef std::vector<std::tuple<uint64_t, double>> subseries;
 
         inline void appendToSeries(series& s, rapidjson::Document& doc) {
-            s.timestamps.push_back(static_cast<double>(doc["timestamp"]["$date"].GetInt64()));
+            s.timestamps.push_back(doc["timestamp"]["$date"].GetUint64());
             s.low.push_back(doc["low"].GetDouble());
             s.high.push_back(doc["high"].GetDouble());
             s.close.push_back(doc["close"].GetDouble());
@@ -41,10 +41,10 @@ namespace hjw {
         // Information about a complete time series
         struct seriesInfo {
             std::string symbol;
-            int64_t minStamp;
-            int64_t maxStamp;
+            uint64_t minStamp;
+            uint64_t maxStamp;
 
-            seriesInfo(const std::string& s, int64_t min, int64_t max)
+            seriesInfo(const std::string& s, uint64_t min, uint64_t max)
                 : symbol(s), minStamp(min), maxStamp(max) {}
         };
 
