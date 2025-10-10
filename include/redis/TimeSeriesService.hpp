@@ -32,7 +32,7 @@ namespace hjw {
                 net::awaitable<void> co_addSeries(utils::series * s);
 
                 // Add a range of spot values
-                net::awaitable<void> co_add(const std::string& tsName, const std::vector<double>& timeStamps,
+                net::awaitable<void> co_add(const std::string& tsName, const std::vector<uint64_t>& timeStamps,
                                             const std::vector<double>& values);
 
                 // Get a whole chunk of spots
@@ -66,7 +66,7 @@ namespace hjw {
                     bucket->assign(values.begin(), values.end());
                 }
 
-                inline void fill_key(std::vector<double> * bucket,
+                inline void fill_key(std::vector<uint64_t> * bucket,
                                      utils::subseries& tap) {
                     bucket->clear();
                     bucket->reserve(tap.size());
