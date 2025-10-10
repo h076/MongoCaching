@@ -41,10 +41,10 @@ namespace hjw {
         // Information about a complete time series
         struct seriesInfo {
             std::string symbol;
-            std::string minStamp;
-            std::string maxStamp;
+            uint64_t minStamp;
+            uint64_t maxStamp;
 
-            seriesInfo(const std::string& s, const std::string& min, const std::string& max)
+            seriesInfo(const std::string& s, uint64_t min, uint64_t max)
                 : symbol(s), minStamp(min), maxStamp(max) {}
         };
 

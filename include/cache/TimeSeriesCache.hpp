@@ -4,6 +4,7 @@
 #include <boost/asio/any_io_executor.hpp>
 #include <boost/asio/executor_work_guard.hpp>
 #include <condition_variable>
+#include <memory>
 #include <utils/tsQueue.hpp>
 #include <cache/Requests.hpp>
 
@@ -82,6 +83,9 @@ namespace hjw {
                 utils::tsqueue<RequestTypeVariant> m_reqQueue;
 
                 net::awaitable<void> requestHandler();
+
+                // promise for handler loop to ensure safe stop
+                std::shared_ptr<std::promise<void>> m_reqHandlerPromise;
 
                 net::awaitable<void> handleGet(TimeSeriesRequest<RequestType::GET>&& req);
 

@@ -2,6 +2,7 @@
 #include "cache/Requests.hpp"
 #include "redis/TimeSeriesService.hpp"
 #include <cache/TimeSeriesCache.hpp>
+#include <future>
 #include <sys/types.h>
 
 using namespace hjw::cache;
@@ -13,7 +14,7 @@ TimeSeriesCache::~TimeSeriesCache() {
 
 // taking the request as an rvalue and moving it to the queue
 // the request must be moved as it contains std::promise which cannot be copied
-void TimeSeriesCache::enque(TimeSeriesRequest&& r)  {
+void TimeSeriesCache::enque(RequestTypeVariant&& r)  {
     if (m_accepting) {
         m_active.fetch_add(1, std::memory_order_relaxed);
         m_reqQueue.push_back(std::move(r));
@@ -30,8 +31,18 @@ void TimeSeriesCache::run() {
     // create redis connection pool
     m_redisPool = new connectionPool(exec, "127.0.0.1", "6379", 5);
 
+    // Use void promise to ensure safe cache stop
+    m_reqHandlerPromise = std::make_shared<std::promise<void>>();
+    std::shared_ptr<std::promise<void>> p_ptr = m_reqHandlerPromise;
+
     // Spawn the request handler loop
-    net::co_spawn(m_ioc, requestHandler(), net::detached);
+    net::co_spawn(m_ioc, [this, p_ptr] () -> net::awaitable<void> {
+        co_await requestHandler();
+        try {
+            p_ptr->set_value(); // set value after handler has finished, unblock wait in stop()
+        } catch (...) {}
+        co_return;
+    }, net::detached);
 
     // Run io_context on dedicated thread
     m_ctxThread = std::thread([this]() {
@@ -40,42 +51,46 @@ void TimeSeriesCache::run() {
 }
 
 void TimeSeriesCache::stop() {
+    // Stop accepting requests
     m_accepting = false;
 
     // Wait for all active requests to finish
     std::unique_lock<std::mutex> lk(m_activeMtx);
     m_activeCv.wait(lk, [this] {return m_active.load(std::memory_order_relaxed) == 0;});
 
-    // tell request loop to stop
-    m_running = false;
     // send false request to unwait queue
-    TimeSeriesRequest<RequestType::SET> fr{"", 0, 0, nullptr};
+    TimeSeriesRequest<RequestType::STOP_CACHE> fr;
     m_reqQueue.push_back(std::move(fr));
 
-    // allow io ctx to stop as guard is released
+    // wait for handler to finish
+    if (m_reqHandlerPromise) {
+        std::future<void> f = m_reqHandlerPromise->get_future();
+        f.wait(); // blocks
+        m_reqHandlerPromise.reset();
+    }
+
+    // teardown io_context / guard
     m_ctxGuard.reset();
-    // stop io context
     m_ioc.stop();
-    // join dedicated thread
-    if(m_ctxThread.joinable())
+
+    // join the thread
+    if (m_ctxThread.joinable())
         m_ctxThread.join();
 }
 
 auto TimeSeriesCache::requestHandler() -> net::awaitable<void> {
     RequestTypeVariant req;
+    bool rtn = false;
 
-    while (m_running) {
+    while (true) {
         // handle requests
 
         // use wait function rather than busy spining
         m_reqQueue.wait();
 
-        if (!m_running)
-            break;
-
         req = m_reqQueue.pop_front();
 
-        co_await std::visit([this](auto&& r) -> net::awaitable<void> {
+        co_await std::visit([this, &rtn](auto&& r) -> net::awaitable<void> {
             using req = std::decay_t<decltype(r)>;
             if constexpr (req::type == RequestType::GET)
                 co_await handleGet(std::move(r));
@@ -84,12 +99,12 @@ auto TimeSeriesCache::requestHandler() -> net::awaitable<void> {
             else if constexpr (req::type == RequestType::INFO)
                 co_await handleInfo(std::move(r));
             else if constexpr (req::type == RequestType::STOP_CACHE)
-                this->m_running = false;
+                rtn = true;
         }, std::move(req));
 
+        if (rtn)
+            co_return;
     }
-
-    co_return;
 }
 
 auto TimeSeriesCache::handleGet(TimeSeriesRequest<RequestType::GET>&& r) -> net::awaitable<void> {

@@ -1,5 +1,6 @@
 #include "mongo/SpotService.hpp"
 #include <bsoncxx/builder/stream/helpers.hpp>
+#include <string>
 
 using namespace hjw::mongo;
 using namespace hjw::utils;
@@ -56,7 +57,7 @@ seriesInfo * SpotService::info(const std::string& symbol) {
     // match stage
     mongocxx::pipeline pipeline;
     pipeline.match(document{}
-                   << "symbol" << "COKE"
+                   << "symbol" << symbol
                    << finalize);
 
     // group stage
@@ -70,16 +71,23 @@ seriesInfo * SpotService::info(const std::string& symbol) {
     auto cursor = collection.aggregate(pipeline);
 
     // Does the symbol exists ?
-    if (cursor.begin() == cursor.end()) {
+    auto it = cursor.begin();
+    if (it == cursor.end()) {
         return nullptr;
     }
 
+
+
     // Only one document should be returned
+    auto&& doc = *(it);
+    std::cout << bsoncxx::to_json(doc) << std::endl;
     rapidjson::Document jd;
-    jd.SetObject();
-    auto&& doc = *(cursor.begin());
-    jd.Parse(bsoncxx::to_json(doc).c_str());
-    seriesInfo * si = new seriesInfo(symbol, jd["minTimestamp"].GetString(), jd["maxTimestamp"].GetString());
+
+    uint64_t minTs = jd["minTimestamp"]["$date"].GetDouble();
+    uint64_t maxTs = jd["maxTimestamp"]["$date"].GetDouble();
+
+    seriesInfo * si = new seriesInfo(symbol, minTs, maxTs);
+
     return si;
 }
 
