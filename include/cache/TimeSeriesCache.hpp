@@ -4,6 +4,7 @@
 #include <boost/asio/any_io_executor.hpp>
 #include <boost/asio/executor_work_guard.hpp>
 #include <condition_variable>
+#include <memory>
 #include <utils/tsQueue.hpp>
 #include <cache/Requests.hpp>
 
@@ -31,6 +32,12 @@ namespace hjw {
         namespace net = boost::asio;
         namespace redis = hjw::redis;
 
+        using RequestTypeVariant = std::variant<
+                TimeSeriesRequest<RequestType::GET>,
+                TimeSeriesRequest<RequestType::SET>,
+                TimeSeriesRequest<RequestType::INFO>,
+                TimeSeriesRequest<RequestType::STOP_CACHE>>;
+
         class TimeSeriesCache {
 
             public:
@@ -46,7 +53,7 @@ namespace hjw {
                 ~TimeSeriesCache();
 
                 // Enqueue a single request
-                void enque(TimeSeriesRequest&& req);
+                void enque(RequestTypeVariant&& req);
 
                 // Run start the io context and run cache loop
                 void run();
@@ -73,11 +80,20 @@ namespace hjw {
             private:
 
                 // Thread safe queue to handle requests
-                utils::tsqueue<TimeSeriesRequest> m_reqQueue;
+                utils::tsqueue<RequestTypeVariant> m_reqQueue;
 
                 net::awaitable<void> requestHandler();
 
-                net::awaitable<void> handleGet(TimeSeriesRequest&& req);
+                // promise for handler loop to ensure safe stop
+                std::shared_ptr<std::promise<void>> m_reqHandlerPromise;
+
+                net::awaitable<void> handleGet(TimeSeriesRequest<RequestType::GET>&& req);
+
+                net::awaitable<void> handleSet(TimeSeriesRequest<RequestType::SET>&& req);
+
+                net::awaitable<void> handleInfo(TimeSeriesRequest<RequestType::INFO>&& req);
+
+                net::awaitable<bool> handleMissInfo(const std::string& symbol);
 
                 net::awaitable<utils::series*> handleMiss(const std::string& symbol, const uint64_t from,
                                                           const uint64_t to, redis::TimeSeriesService * tss);

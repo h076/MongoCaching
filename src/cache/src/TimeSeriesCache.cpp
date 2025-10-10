@@ -1,6 +1,8 @@
 
+#include "cache/Requests.hpp"
 #include "redis/TimeSeriesService.hpp"
 #include <cache/TimeSeriesCache.hpp>
+#include <future>
 #include <sys/types.h>
 
 using namespace hjw::cache;
@@ -12,7 +14,7 @@ TimeSeriesCache::~TimeSeriesCache() {
 
 // taking the request as an rvalue and moving it to the queue
 // the request must be moved as it contains std::promise which cannot be copied
-void TimeSeriesCache::enque(TimeSeriesRequest&& r)  {
+void TimeSeriesCache::enque(RequestTypeVariant&& r)  {
     if (m_accepting) {
         m_active.fetch_add(1, std::memory_order_relaxed);
         m_reqQueue.push_back(std::move(r));
@@ -29,8 +31,18 @@ void TimeSeriesCache::run() {
     // create redis connection pool
     m_redisPool = new connectionPool(exec, "127.0.0.1", "6379", 5);
 
+    // Use void promise to ensure safe cache stop
+    m_reqHandlerPromise = std::make_shared<std::promise<void>>();
+    std::shared_ptr<std::promise<void>> p_ptr = m_reqHandlerPromise;
+
     // Spawn the request handler loop
-    net::co_spawn(m_ioc, requestHandler(), net::detached);
+    net::co_spawn(m_ioc, [this, p_ptr] () -> net::awaitable<void> {
+        co_await requestHandler();
+        try {
+            p_ptr->set_value(); // set value after handler has finished, unblock wait in stop()
+        } catch (...) {}
+        co_return;
+    }, net::detached);
 
     // Run io_context on dedicated thread
     m_ctxThread = std::thread([this]() {
@@ -39,50 +51,63 @@ void TimeSeriesCache::run() {
 }
 
 void TimeSeriesCache::stop() {
+    // Stop accepting requests
     m_accepting = false;
 
     // Wait for all active requests to finish
     std::unique_lock<std::mutex> lk(m_activeMtx);
     m_activeCv.wait(lk, [this] {return m_active.load(std::memory_order_relaxed) == 0;});
 
-    // tell request loop to stop
-    m_running = false;
     // send false request to unwait queue
-    TimeSeriesRequest fr{RequestType::SET, "", 0, 0, nullptr};
+    TimeSeriesRequest<RequestType::STOP_CACHE> fr;
     m_reqQueue.push_back(std::move(fr));
 
-    // allow io ctx to stop as guard is released
+    // wait for handler to finish
+    if (m_reqHandlerPromise) {
+        std::future<void> f = m_reqHandlerPromise->get_future();
+        f.wait(); // blocks
+        m_reqHandlerPromise.reset();
+    }
+
+    // teardown io_context / guard
     m_ctxGuard.reset();
-    // stop io context
     m_ioc.stop();
-    // join dedicated thread
-    if(m_ctxThread.joinable())
+
+    // join the thread
+    if (m_ctxThread.joinable())
         m_ctxThread.join();
 }
 
 auto TimeSeriesCache::requestHandler() -> net::awaitable<void> {
-    TimeSeriesRequest r;
+    RequestTypeVariant req;
+    bool rtn = false;
 
-    while (m_running) {
+    while (true) {
         // handle requests
 
         // use wait function rather than busy spining
         m_reqQueue.wait();
 
-        if (!m_running)
-            break;
+        req = m_reqQueue.pop_front();
 
-        r = m_reqQueue.pop_front();
+        co_await std::visit([this, &rtn](auto&& r) -> net::awaitable<void> {
+            using req = std::decay_t<decltype(r)>;
+            if constexpr (req::type == RequestType::GET)
+                co_await handleGet(std::move(r));
+            else if constexpr (req::type == RequestType::SET)
+                co_await handleSet(std::move(r));
+            else if constexpr (req::type == RequestType::INFO)
+                co_await handleInfo(std::move(r));
+            else if constexpr (req::type == RequestType::STOP_CACHE)
+                rtn = true;
+        }, std::move(req));
 
-        if (r.type == RequestType::GET) {
-            co_await handleGet(std::move(r));
-        }
+        if (rtn)
+            co_return;
     }
-
-    co_return;
 }
 
-auto TimeSeriesCache::handleGet(TimeSeriesRequest&& r) -> net::awaitable<void> {
+auto TimeSeriesCache::handleGet(TimeSeriesRequest<RequestType::GET>&& r) -> net::awaitable<void> {
 
     // handle request counter
     auto onExit = gsl::finally([this] {
@@ -105,7 +130,7 @@ auto TimeSeriesCache::handleGet(TimeSeriesRequest&& r) -> net::awaitable<void> {
     if (!exists) {
         std::cout << "Cache Miss : " << r.symbol << ", " << r.from << " : " << r.to << std::endl;
         s = co_await handleMiss(r.symbol, from, to, &tsService);
-        r.getSeries->set_value(s);
+        r.series->set_value(s);
         m_redisPool->release(std::move(redisConn));
         co_return;
     }
@@ -140,9 +165,48 @@ auto TimeSeriesCache::handleGet(TimeSeriesRequest&& r) -> net::awaitable<void> {
         s = co_await tsService.co_getSeries(r.symbol, from, to);
     }
 
-    r.getSeries->set_value(s);
+    r.series->set_value(s);
     m_redisPool->release(std::move(redisConn));
     co_return;
+}
+
+auto TimeSeriesCache::handleSet(TimeSeriesRequest<RequestType::SET>&& req) -> net::awaitable<void> {
+    // Yet to implement
+    co_return;
+}
+
+auto TimeSeriesCache::handleInfo(TimeSeriesRequest<RequestType::INFO>&& req) -> net::awaitable<void> {
+    // Want to query the cache to see if a ticket exists
+    // handle request counter
+    auto onExit = gsl::finally([this] {
+        if (m_active.fetch_sub(1, std::memory_order_relaxed) == 1) {
+            std::lock_guard<std::mutex> lk(m_activeMtx);
+            m_activeCv.notify_all();
+        }
+    });
+
+    auto redisConn = co_await m_redisPool->acquire();
+    redis::TimeSeriesService tsService(redisConn);
+
+    // check if the series exists
+    bool cacheExists = co_await tsService.co_exists(req.symbol);
+
+    if (!cacheExists) {
+        req.exists->set_value(co_await handleMissInfo(req.symbol));
+    }else {
+        req.exists->set_value(true);
+    }
+    co_return;
+}
+
+auto TimeSeriesCache::handleMissInfo(const std::string& symbol) -> net::awaitable<bool> {
+    // Check if the series exists in the mongo cluster
+    utils::seriesInfo * si = m_mongoSpotService.info(symbol);
+    if (si != nullptr) {
+        free(si);
+        co_return true;
+    }
+    co_return false;
 }
 
 auto TimeSeriesCache::handleMiss(const std::string& symbol, const uint64_t from, const uint64_t to,
