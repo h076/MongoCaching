@@ -12,7 +12,6 @@ namespace hjw {
     namespace redis {
 
         namespace net = boost::asio;
-        namespace utils = hjw::utils;
 
         // Will be used to write strategy results
         // And retrieve strategy results
@@ -27,10 +26,10 @@ namespace hjw {
 
                 // Add test report to the redis db
                 // Should tae ptr to task and free as strat thread is fired and forgotten
-                net::awaitable<void> co_add(utils::testReport* report);
+                net::awaitable<void> co_add(hjw::utils::testReport* report);
 
                 // Get test report from redis db
-                net::awaitable<utils::testReport*> co_get(int testId);
+                net::awaitable<hjw::utils::testReport*> co_get(int testId);
 
                 // Check if test exists
                 net::awaitable<bool> co_exists(int testId);
