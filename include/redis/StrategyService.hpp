@@ -12,6 +12,7 @@ namespace hjw {
     namespace redis {
 
         namespace net = boost::asio;
+        namespace utils = hjw::utils;
 
         // Will be used to write strategy results
         // And retrieve strategy results
