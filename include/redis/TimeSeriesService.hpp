@@ -14,6 +14,7 @@ namespace hjw {
     namespace redis {
 
         namespace net = boost::asio;
+        namespace utils = hjw::utils;
 
         // Used for any red timeseries requests and repsonses
         class TimeSeriesService {
