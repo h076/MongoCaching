@@ -1,6 +1,5 @@
 #include "mongo/SpotService.hpp"
-#include <bsoncxx/builder/stream/helpers.hpp>
-#include <string>
+#include "utils/time.hpp"
 
 using namespace hjw::mongo;
 using namespace hjw::utils;

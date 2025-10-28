@@ -1,9 +1,9 @@
 #ifndef REQUESTS_H_
 #define REQUESTS_H_
 
-#include "utils/spots.hpp"
-#include <iostream>
 #include <future>
+
+#include "utils/hjw_utils.hpp"
 
 namespace hjw {
 

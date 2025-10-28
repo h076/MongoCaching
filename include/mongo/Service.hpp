@@ -8,8 +8,7 @@
 
 #include <rapidjson/document.h>
 
-#include <utils/time.hpp>
-#include <utils/spots.hpp>
+#include "utils/hjw_utils.hpp"
 
 using namespace bsoncxx;
 

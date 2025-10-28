@@ -2,12 +2,11 @@
 #define TIMESERIESSERVICE_H_
 
 #include <boost/redis/connection.hpp>
-
 #include <boost/asio.hpp>
-#include <utils/spots.hpp>
 
 #include <ranges>
-#include <algorithm>
+
+#include "utils/hjw_utils.hpp"
 
 namespace hjw {
 

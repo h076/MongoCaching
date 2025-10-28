@@ -2,10 +2,9 @@
 #define STRATEGYSERVICE_H_
 
 #include <boost/redis/connection.hpp>
-
 #include <boost/asio.hpp>
 
-#include <utils/strategy.hpp>
+#include "utils/hjw_utils.hpp"
 
 namespace hjw {
 
@@ -26,10 +25,10 @@ namespace hjw {
 
                 // Add test report to the redis db
                 // Should tae ptr to task and free as strat thread is fired and forgotten
-                net::awaitable<void> co_add(hjw::utils::testReport* report);
+                net::awaitable<void> co_add(utils::testReport* report);
 
                 // Get test report from redis db
-                net::awaitable<hjw::utils::testReport*> co_get(int testId);
+                net::awaitable<utils::testReport*> co_get(int testId);
 
                 // Check if test exists
                 net::awaitable<bool> co_exists(int testId);

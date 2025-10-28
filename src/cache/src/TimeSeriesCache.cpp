@@ -1,9 +1,4 @@
-
-#include "cache/Requests.hpp"
-#include "redis/TimeSeriesService.hpp"
-#include <cache/TimeSeriesCache.hpp>
-#include <future>
-#include <sys/types.h>
+#include "cache/TimeSeriesCache.hpp"
 
 using namespace hjw::cache;
 using namespace hjw::redis;

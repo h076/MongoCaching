@@ -1,10 +1,9 @@
 #include "redis/StrategyService.hpp"
 
-using namespace hjw::utils;
 using namespace hjw::redis;
 using namespace boost::redis;
 
-auto StrategyService::co_add(testReport* report) -> net::awaitable<void> {
+auto StrategyService::co_add(hjw::utils::testReport* report) -> net::awaitable<void> {
     // Get report as json
     std::string rj = reportToJsonString(report);
 
@@ -21,7 +20,7 @@ auto StrategyService::co_add(testReport* report) -> net::awaitable<void> {
     co_return;
 }
 
-auto StrategyService::co_get(int testId) -> net::awaitable<testReport*> {
+auto StrategyService::co_get(int testId) -> net::awaitable<hjw::utils::testReport*> {
     // Ensure the test exists otherwise return null report
     bool exists = co_await co_exists(testId);
     if (!exists)
@@ -37,7 +36,7 @@ auto StrategyService::co_get(int testId) -> net::awaitable<testReport*> {
     std::string testStr = std::get<0>(resp).value();
 
     // will return nullptr if any parse errors
-    co_return stringToReport(testStr);
+    co_return hjw::utils::stringToReport(testStr);
 }
 
 auto StrategyService::co_exists(int testId) -> net::awaitable<bool> {

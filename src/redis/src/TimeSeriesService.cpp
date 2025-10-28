@@ -1,9 +1,4 @@
-#include <boost/asio/awaitable.hpp>
-#include <boost/redis/adapter/result.hpp>
-#include <boost/redis/response.hpp>
-#include <map>
-#include <redis/TimeSeriesService.hpp>
-
+#include "redis/TimeSeriesService.hpp"
 
 using namespace hjw::utils;
 using namespace hjw::redis;

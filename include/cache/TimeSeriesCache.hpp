@@ -5,16 +5,13 @@
 #include <boost/asio/executor_work_guard.hpp>
 #include <condition_variable>
 #include <memory>
-#include <utils/tsQueue.hpp>
+
 #include <cache/Requests.hpp>
 
 #include <boost/asio/io_context.hpp>
 
-#include <redis/connectionPool.hpp>
-#include <redis/TimeSeriesService.hpp>
-
-#include <mongo/Connector.hpp>
-#include <mongo/SpotService.hpp>
+#include "redis/hjw_redis.hpp"
+#include "mongo/hjw_mongo.hpp"
 
 #include <gsl/gsl>
 #include <mutex>

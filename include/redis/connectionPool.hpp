@@ -9,11 +9,6 @@
 #include <boost/redis/connection.hpp>
 #include <boost/redis/config.hpp>
 
-#include <iostream>
-#include <deque>
-#include <memory>
-#include <optional>
-
 // Note on optimisation
 // C++14 and later has return value optimisation
 // So all pointers unique / shared should not be returne wrapped in move

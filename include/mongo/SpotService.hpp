@@ -2,7 +2,7 @@
 #define SPOTSERVICE_H_
 
 #include "Service.hpp"
-#include "utils/spots.hpp"
+#include "utils/hjw_utils.hpp"
 
 namespace hjw {
 
