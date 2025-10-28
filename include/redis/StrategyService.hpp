@@ -5,8 +5,12 @@
 #include <boost/asio.hpp>
 
 #include "utils/hjw_utils.hpp"
+#include "utils/strategy.hpp"
 
 namespace hjw {
+
+    // Forward decl
+    namespace utils {struct testReport;}
 
     namespace redis {
 
